@@ -3,12 +3,13 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "App Foundation",
-  description: "Phase: Foundations Deployment Preview",
+  title: "Talal Portfolio & Foundation",
+  description: "Phase: Foundations & Identity Kit",
 };
 
 const navItems = [
   { href: "/", label: "Home" },
+  { href: "/identity", label: "Identity Kit" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/settings", label: "Settings" },
   { href: "/health", label: "Health Check" },
@@ -25,7 +26,7 @@ export default function RootLayout({
         <header className="border-b border-slate-200 bg-white sticky top-0 z-50">
           <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link href="/" className="font-bold text-lg text-emerald-600">
-              FoundationApp
+              Talal<span className="text-slate-900">.</span>
             </Link>
             <div className="flex gap-4 sm:gap-6 overflow-x-auto text-sm font-medium py-2">
               {navItems.map((item) => (

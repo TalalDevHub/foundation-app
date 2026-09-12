@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --breakpoint-xs: 23.4375rem;
-  --color-brand-50: #f0fdf4;
-  --color-brand-500: #22c55e;
-  --color-brand-900: #14532d;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-heading: "Inter Tight", system-ui, sans-serif;
+
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-content-main: #0f172a;
+  --color-content-muted: #475569;
+  --color-accent: #059669;
 }
