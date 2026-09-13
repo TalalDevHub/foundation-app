@@ -1,31 +1,33 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { useChat } from "ai/react";
+import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 
-export function ChatInterface() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, stop } = useChat({
-    api: "/api/chat",
-  });
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
 
+export function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isAutoScrollLocked, setIsAutoScrollLocked] = useState(true);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  // Release auto-scroll lock if user scrolls up
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
-
     const threshold = 60;
     const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
-
     setIsAutoScrollLocked(isAtBottom);
     setShowScrollBottom(!isAtBottom);
   };
 
-  // Keep auto-scroll active during stream only when pinned to bottom
   useEffect(() => {
     if (isAutoScrollLocked && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -43,9 +45,85 @@ export function ChatInterface() {
     }
   };
 
+  const stop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = input.trim();
+    if (!query || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: query,
+    };
+
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput("");
+    setIsLoading(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const assistantMessageId = (Date.now() + 1).toString();
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantMessageId, role: "assistant", content: "" },
+    ]);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to receive stream response");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        accumulatedText += decoder.decode(value, { stream: true });
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, content: accumulatedText } : msg
+          )
+        );
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: "Error: Generation failed. Please try again." }
+              : msg
+          )
+        );
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
   return (
     <div className="flex flex-col h-[650px] w-full max-w-2xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-      {/* Header */}
       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/75">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -54,7 +132,6 @@ export function ChatInterface() {
         <span className="text-xs font-mono text-slate-500">Claude 3.5 Sonnet</span>
       </div>
 
-      {/* Messages */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -69,6 +146,8 @@ export function ChatInterface() {
 
         {messages.map((message) => {
           const isUser = message.role === "user";
+          if (!message.content && !isUser) return null;
+
           return (
             <div
               key={message.id}
@@ -89,8 +168,7 @@ export function ChatInterface() {
           );
         })}
 
-        {/* Thinking indicator handoff */}
-        {isLoading && messages[messages.length - 1]?.role === "user" && (
+        {isLoading && messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content === "" && (
           <div className="flex justify-start">
             <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-2xl rounded-bl-xs px-4 py-3 flex items-center gap-1.5 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:-0.3s]" />
@@ -100,7 +178,6 @@ export function ChatInterface() {
           </div>
         )}
 
-        {/* Jump button */}
         {showScrollBottom && (
           <button
             type="button"
@@ -112,12 +189,11 @@ export function ChatInterface() {
         )}
       </div>
 
-      {/* Input controls */}
       <div className="p-3 sm:p-4 border-t border-slate-100 bg-white">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about architectural standards or case studies..."
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
           />
