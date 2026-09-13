@@ -4,11 +4,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Talal Portfolio & Foundation",
-  description: "Phase: Foundations, A11y Playground & Identity Kit",
+  description: "Foundations, A11y Playground & AI Streaming Chat",
 };
 
 const navItems = [
   { href: "/", label: "Home" },
+  { href: "/chat", label: "AI Assistant" },
   { href: "/playground", label: "Playground" },
   { href: "/identity", label: "Identity Kit" },
   { href: "/images", label: "Image Curation" },
