@@ -24,12 +24,15 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   toolPart?: ToolPart;
+  isStreamError?: boolean;
+  errorMessage?: string;
 }
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -69,20 +72,28 @@ export function ChatInterface() {
     setIsLoading(false);
   };
 
-  const sendQuery = async (queryText: string) => {
+  const sendQuery = async (queryText: string, isRetry = false) => {
     const query = queryText.trim();
-    if (!query || isLoading) return;
+    if (!query || (isLoading && !isRetry)) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: query,
-    };
+    let targetMessages = messages;
 
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    if (isRetry) {
+      // Remove last failed assistant message to retry cleanly
+      targetMessages = messages.filter((m, i) => i !== messages.length - 1);
+    } else {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: query,
+      };
+      targetMessages = [...messages, userMessage];
+    }
+
+    setMessages(targetMessages);
     setInput("");
     setIsLoading(true);
+    setLastFailedPrompt(null);
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -97,11 +108,17 @@ export function ChatInterface() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: targetMessages }),
         signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) throw new Error("Stream response failed");
+      // Handle HTTP status errors (429, 500, 503)
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.message || `Server responded with status ${response.status}`);
+      }
+
+      if (!response.body) throw new Error("Stream response body unavailable.");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -123,6 +140,23 @@ export function ChatInterface() {
             } catch (e) {
               console.error("Malformed tool part:", e);
             }
+          } else if (line.startsWith("__STREAM_ERROR__:")) {
+            const streamErr = line.replace("__STREAM_ERROR__:", "");
+            setLastFailedPrompt(query);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? {
+                      ...msg,
+                      content: accumulatedText,
+                      isStreamError: true,
+                      errorMessage: streamErr,
+                    }
+                  : msg
+              )
+            );
+            setIsLoading(false);
+            return;
           } else {
             accumulatedText += line;
           }
@@ -138,10 +172,15 @@ export function ChatInterface() {
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
+        setLastFailedPrompt(query);
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, content: "Error: Generation failed." }
+              ? {
+                  ...msg,
+                  isStreamError: true,
+                  errorMessage: err.message || "Network stream encountered an interruption.",
+                }
               : msg
           )
         );
@@ -152,60 +191,77 @@ export function ChatInterface() {
     }
   };
 
+  const handleRetry = () => {
+    if (lastFailedPrompt) {
+      sendQuery(lastFailedPrompt, true);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendQuery(input);
   };
 
   return (
-    <div className="flex flex-col h-[700px] w-full max-w-3xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden font-sans">
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/75">
+    <div className="flex flex-col h-[calc(100dvh-180px)] min-h-[500px] max-h-[720px] w-full max-w-3xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden font-sans">
+      {/* Header */}
+      <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/75 select-none">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h2 className="text-sm font-semibold text-slate-900">Architecture and Tools Inspector</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Architecture & Failure Recovery Flow</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono">
-            tools: inspectArchitecture
+          <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono">
+            Checkpoint 1
           </span>
         </div>
       </div>
 
+      {/* Message Stream */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
+        style={{ overscrollBehaviorY: "contain" }}
         className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 relative bg-slate-50/20"
       >
+        {/* Designed Empty State: Action-Oriented */}
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
-              <span className="text-emerald-600 font-bold text-lg">*</span>
+            <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
+              <span className="text-emerald-600 font-bold text-lg">⚡</span>
             </div>
-            <p className="text-sm font-medium text-slate-800">Generative UI and Server-Side Tool Execution</p>
+            <p className="text-sm font-semibold text-slate-800">No active conversation</p>
             <p className="text-xs mt-1 text-slate-500 max-w-sm">
-              Trigger live server-side audits with Zod validation, morphing tool states, and custom UI components.
+              Execute happy-path audits or run controlled sabotage tests to evaluate failure boundaries.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button
                 type="button"
                 onClick={() => sendQuery("Audit a11y primitives")}
-                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-xs transition"
+                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-2xs transition"
               >
-                Audit A11y Primitives
+                🔍 Audit A11y Primitives
               </button>
               <button
                 type="button"
-                onClick={() => sendQuery("Inspect streaming chat")}
-                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-xs transition"
+                onClick={() => sendQuery("Sabotage mid-stream")}
+                className="text-xs bg-white border border-amber-200 text-amber-800 hover:bg-amber-50 px-3 py-1.5 rounded-lg shadow-2xs transition"
               >
-                Inspect Streaming Chat
+                ⚡ Sabotage Mid-Stream
+              </button>
+              <button
+                type="button"
+                onClick={() => sendQuery("Sabotage 429")}
+                className="text-xs bg-white border border-slate-200 hover:border-rose-400 text-slate-700 px-3 py-1.5 rounded-lg shadow-2xs transition"
+              >
+                🛑 Test 429 Rate Limit
               </button>
               <button
                 type="button"
                 onClick={() => sendQuery("Test error state")}
-                className="text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg shadow-xs transition"
+                className="text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg shadow-2xs transition"
               >
-                Trigger Tool Error State
+                ⚠️ Tool Exception
               </button>
             </div>
           </div>
@@ -219,21 +275,44 @@ export function ChatInterface() {
               className={`flex ${isUser ? "justify-end" : "justify-start"} flex-col space-y-2`}
             >
               <div
-                className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                className={`max-w-[90%] sm:max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   isUser
                     ? "self-end bg-[#0F172A] text-white rounded-br-xs"
-                    : "self-start bg-white text-[#0F172A] border border-slate-200/80 rounded-bl-xs shadow-xs"
+                    : "self-start bg-white text-[#0F172A] border border-slate-200/80 rounded-bl-xs shadow-2xs"
                 }`}
               >
+                {/* Tool Lifecycle Card */}
                 {message.toolPart && (
                   <div className="mb-3 transition-all duration-200">
                     <ToolPartRenderer toolPart={message.toolPart} />
                   </div>
                 )}
 
+                {/* Markdown Text */}
                 {message.content && (
                   <div className="prose prose-sm max-w-none text-inherit">
                     <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
+                )}
+
+                {/* Inline Mid-Stream Error & Retry Boundary */}
+                {message.isStreamError && (
+                  <div className="mt-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-950 text-xs">
+                    <div className="flex items-center gap-2 font-semibold mb-1">
+                      <span className="text-amber-600 font-bold">⚠️</span>
+                      <span>Stream Interruption Caught</span>
+                    </div>
+                    <p className="text-slate-700 mb-2.5">
+                      {message.errorMessage || "The connection dropped during response delivery."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      disabled={isLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-medium text-xs rounded-lg transition"
+                    >
+                      <span>↻</span> Retry Failed Query
+                    </button>
                   </div>
                 )}
               </div>
@@ -241,15 +320,16 @@ export function ChatInterface() {
           );
         })}
 
+        {/* Content-Matched Skeleton Loader (Prevents CLS) */}
         {isLoading &&
           messages[messages.length - 1]?.role === "assistant" &&
           !messages[messages.length - 1]?.toolPart &&
           !messages[messages.length - 1]?.content && (
             <div className="flex justify-start">
-              <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-1.5 shadow-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce" />
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 w-[75%] max-w-md shadow-2xs space-y-2.5 animate-pulse">
+                <div className="h-3.5 bg-slate-200 rounded w-1/3" />
+                <div className="h-2.5 bg-slate-100 rounded w-5/6" />
+                <div className="h-2.5 bg-slate-100 rounded w-2/3" />
               </div>
             </div>
           )}
@@ -260,17 +340,18 @@ export function ChatInterface() {
             onClick={scrollToBottom}
             className="sticky bottom-2 left-1/2 -translate-x-1/2 bg-white/95 border border-slate-200 shadow-md text-slate-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-slate-50 transition"
           >
-            Go to latest
+            ↓ Jump to latest
           </button>
         )}
       </div>
 
+      {/* Pinned Input Form */}
       <div className="p-3 sm:p-4 border-t border-slate-100 bg-white">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type 'Audit a11y primitives' or 'Test error state'..."
+            placeholder="Ask question or type 'Sabotage mid-stream'..."
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
           />
           {isLoading ? (
@@ -287,7 +368,7 @@ export function ChatInterface() {
               disabled={!input.trim()}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap"
             >
-              Run
+              Send
             </button>
           )}
         </form>
@@ -330,7 +411,7 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
 
   if (state === "output-available" && result) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm text-slate-900 transition-all duration-200">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs text-slate-900 transition-all duration-200">
         <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-600 font-semibold">
@@ -371,7 +452,7 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
           <ul className="space-y-1 text-xs text-slate-600">
             {result.findings.map((f, i) => (
               <li key={i} className="flex items-start gap-1.5">
-                <span className="text-emerald-500 text-sm leading-none">-</span>
+                <span className="text-emerald-500 text-sm leading-none">•</span>
                 <span>{f}</span>
               </li>
             ))}
@@ -379,7 +460,7 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
         </div>
 
         <div className="bg-emerald-50/60 border border-emerald-200/60 rounded-xl p-2.5 text-xs text-emerald-950 flex items-start gap-2">
-          <span className="text-emerald-600 font-bold">[!]</span>
+          <span className="text-emerald-600 font-bold">💡</span>
           <span>{result.recommendation}</span>
         </div>
       </div>
