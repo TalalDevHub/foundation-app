@@ -10,3 +10,14 @@
   --color-content-muted: #475569;
   --color-accent: #059669;
 }
+
+/* W5 Motion: Buttons with a Brain Shake Keyframe */
+@keyframes buttonWiggle {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-wiggle {
+  animation: buttonWiggle 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
