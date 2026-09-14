@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
@@ -159,11 +159,10 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-[700px] w-full max-w-3xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden font-sans">
-      {/* Header */}
       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/75">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h2 className="text-sm font-semibold text-slate-900">Architecture & Tools Inspector</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Architecture and Tools Inspector</h2>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono">
@@ -172,7 +171,6 @@ export function ChatInterface() {
         </div>
       </div>
 
-      {/* Message & Tool Flow */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -181,9 +179,9 @@ export function ChatInterface() {
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
             <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
-              <span className="text-emerald-600 font-bold text-lg">?</span>
+              <span className="text-emerald-600 font-bold text-lg">*</span>
             </div>
-            <p className="text-sm font-medium text-slate-800">Generative UI &amp; Server-Side Tool Execution</p>
+            <p className="text-sm font-medium text-slate-800">Generative UI and Server-Side Tool Execution</p>
             <p className="text-xs mt-1 text-slate-500 max-w-sm">
               Trigger live server-side audits with Zod validation, morphing tool states, and custom UI components.
             </p>
@@ -191,23 +189,23 @@ export function ChatInterface() {
               <button
                 type="button"
                 onClick={() => sendQuery("Audit a11y primitives")}
-                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-2xs transition"
+                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-xs transition"
               >
-                ?? Audit A11y Primitives
+                Audit A11y Primitives
               </button>
               <button
                 type="button"
                 onClick={() => sendQuery("Inspect streaming chat")}
-                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-2xs transition"
+                className="text-xs bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 px-3 py-1.5 rounded-lg shadow-xs transition"
               >
-                ?? Inspect Streaming Chat
+                Inspect Streaming Chat
               </button>
               <button
                 type="button"
                 onClick={() => sendQuery("Test error state")}
-                className="text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg shadow-2xs transition"
+                className="text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg shadow-xs transition"
               >
-                ?? Trigger Tool Error State
+                Trigger Tool Error State
               </button>
             </div>
           </div>
@@ -224,17 +222,15 @@ export function ChatInterface() {
                 className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   isUser
                     ? "self-end bg-[#0F172A] text-white rounded-br-xs"
-                    : "self-start bg-white text-[#0F172A] border border-slate-200/80 rounded-bl-xs shadow-2xs"
+                    : "self-start bg-white text-[#0F172A] border border-slate-200/80 rounded-bl-xs shadow-xs"
                 }`}
               >
-                {/* Render Tool Lifecycle Part */}
                 {message.toolPart && (
                   <div className="mb-3 transition-all duration-200">
                     <ToolPartRenderer toolPart={message.toolPart} />
                   </div>
                 )}
 
-                {/* Markdown Content */}
                 {message.content && (
                   <div className="prose prose-sm max-w-none text-inherit">
                     <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -250,7 +246,7 @@ export function ChatInterface() {
           !messages[messages.length - 1]?.toolPart &&
           !messages[messages.length - 1]?.content && (
             <div className="flex justify-start">
-              <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-1.5 shadow-2xs">
+              <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-1.5 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:-0.3s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:-0.15s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce" />
@@ -264,12 +260,11 @@ export function ChatInterface() {
             onClick={scrollToBottom}
             className="sticky bottom-2 left-1/2 -translate-x-1/2 bg-white/95 border border-slate-200 shadow-md text-slate-700 px-3 py-1 rounded-full text-xs font-medium hover:bg-slate-50 transition"
           >
-            ? Jump to latest
+            Go to latest
           </button>
         )}
       </div>
 
-      {/* Input Form */}
       <div className="p-3 sm:p-4 border-t border-slate-100 bg-white">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
@@ -301,11 +296,9 @@ export function ChatInterface() {
   );
 }
 
-// Visual State Machine Renderer for all 4 Tool Lifecycle States
 function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
   const { state, toolName, input, result, error } = toolPart;
 
-  // STATE 1: Input Streaming (Morphing pulse / Preparing tool parameters)
   if (state === "input-streaming") {
     return (
       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-100/90 border border-slate-200/80 text-xs text-slate-600 animate-pulse">
@@ -316,7 +309,6 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
     );
   }
 
-  // STATE 2: Input Available (Tool calling with verified payload)
   if (state === "input-available") {
     return (
       <div className="p-3 rounded-xl bg-sky-50/70 border border-sky-200/70 text-xs text-sky-900 transition-all duration-200">
@@ -336,15 +328,13 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
     );
   }
 
-  // STATE 3: Output Available (GENERATIVE UI: Styled Metric & Findings Component)
   if (state === "output-available" && result) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm text-slate-900 transition-all duration-200">
-        {/* Component Header */}
         <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-600 font-semibold">
-              Live Tool Result • {toolName}
+              Live Tool Result | {toolName}
             </span>
             <h3 className="text-sm font-bold text-slate-900 mt-0.5">{result.moduleName}</h3>
           </div>
@@ -359,7 +349,6 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
           </div>
         </div>
 
-        {/* Metrics Grid */}
         <div className="grid grid-cols-3 gap-2 mb-3">
           <div className="bg-slate-50 rounded-xl p-2 border border-slate-100 text-center">
             <div className="text-[10px] text-slate-500 uppercase font-mono">Cold Start</div>
@@ -377,29 +366,26 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPart }) {
           </div>
         </div>
 
-        {/* Findings List */}
         <div className="mb-3 space-y-1">
           <div className="text-[11px] font-semibold text-slate-700">Verified Findings:</div>
           <ul className="space-y-1 text-xs text-slate-600">
             {result.findings.map((f, i) => (
               <li key={i} className="flex items-start gap-1.5">
-                <span className="text-emerald-500 text-sm leading-none">•</span>
+                <span className="text-emerald-500 text-sm leading-none">-</span>
                 <span>{f}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Action Recommendation */}
         <div className="bg-emerald-50/60 border border-emerald-200/60 rounded-xl p-2.5 text-xs text-emerald-950 flex items-start gap-2">
-          <span className="text-emerald-600 font-bold">??</span>
+          <span className="text-emerald-600 font-bold">[!]</span>
           <span>{result.recommendation}</span>
         </div>
       </div>
     );
   }
 
-  // STATE 4: Output Error (DESIGNED ERROR STATE - Graceful degradation, no crash)
   if (state === "output-error") {
     return (
       <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-rose-950 transition-all duration-200">
