@@ -1,17 +1,5 @@
-﻿import dynamic from "next/dynamic";
+﻿import { InteractiveScene3D } from "@/components/InteractiveScene3D";
 import { ContactForm } from "@/components/ContactForm";
-
-const InteractiveScene3D = dynamic(
-  () => import("@/components/InteractiveScene3D").then((mod) => mod.InteractiveScene3D),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full max-w-2xl h-80 mx-auto my-10 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center justify-center text-xs text-slate-500 font-mono">
-        Mounting 3D Pipeline...
-      </div>
-    ),
-  }
-);
 
 export default function Home() {
   return (
