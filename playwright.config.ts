@@ -14,17 +14,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { 
+      use: {
         ...devices["Desktop Chrome"],
-        // Uses local Chrome if not in CI
         channel: process.env.CI ? undefined : "chrome",
       },
     },
   ],
   webServer: {
-    command: "npm run dev",
+    command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: 180000,
   },
 });
