@@ -1,67 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Talal Shah | Production Portfolio & Systems Engineering
 
-## Getting Started
+A responsive, high-performance developer portfolio showcasing full-stack capabilities, procedural Three.js graphics, interactive GLSL fragment shaders, and automated CI/CD pipelines.
 
-First, run the development server:
+* **Live Production URL:** https://foundation-app-rose.vercel.app
+* **Status:** Production Deployed & Monitored
+* **Target Audience:** Engineering Leads, Technical Recruiters, and Mentors
 
-```bash
+---
+
+## Architecture Overview
+
+* **Frontend:** Next.js 16 (App Router), TypeScript, Tailwind CSS, Vercel Analytics
+* **Graphics Pipeline:** Vanilla Three.js, Custom GLSL Fragment Shader, Procedural Noise, DPR clamped to 1.5, Reduced-Motion Detection
+* **Backend Route Handler:** POST /api/contact with in-memory sliding-window IP rate limiting (3 req/min), character payload bounds, and Resend serverless email dispatch
+* **Testing & Quality:** Vitest unit/component suites, Playwright E2E browser automation, GitHub Actions CI blocking failed builds
+
+---
+
+## Environment Variables
+
+| Variable Name | Required | Context | Description |
+| :--- | :--- | :--- | :--- |
+| RESEND_API_KEY | Yes | Server | Resend API token for transactional email dispatch. |
+| CONTACT_RECEIVER_EMAIL | Yes | Server | Destination inbox address. |
+| NEXT_PUBLIC_APP_NAME | Optional | Client | Application branding metadata flag. |
+
+---
+
+## Local Setup
+
+`ash
+git clone [https://github.com/TalalDevHub/foundation-app.git](https://github.com/TalalDevHub/foundation-app.git)
+cd foundation-app
+npm install --legacy-peer-deps
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Running Tests
+`ash
+npm run test:run
+npm run test:e2e
+`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Key Architectural Decisions
 
-## Learn More
+1. **Vanilla Three.js Over Fiber:** Eliminates React 19 peer-dependency conflicts in CI/CD, keeps bundle size small, and provides exact control over WebGL garbage collection.
+2. **Procedural Math Over 3D Assets:** Procedural GLSL shaders and geometry require zero network overhead compared to multi-megabyte GLB models.
+3. **Deferred API Client Initialization:** Initializing Resend inside request handlers prevents module-evaluation crashes during headless Playwright test runs.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## AI Collaboration Disclosure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+* **GLSL Shader Synthesis:** Co-designed Fractional Brownian Motion and domain-warping algorithms with Claude and Gemini.
+* **Stress Testing:** Identified edge cases including whitespace-only input, rapid double-submits, and high-DPR battery consumption.
+* **CI/CD Debugging:** Diagnosed Turbopack dynamic import constraints and webserver lifecycle bugs through automated runner log analysis.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-### Server-Side Tool Contract: `inspectArchitecture`
-
-- **Name:** `inspectArchitecture`
-- **Purpose:** Audits internal frontend and streaming modules against WCAG 2.2 contrast standards, bundle footprint, and latency metrics.
-- **Input Schema (Zod):**
-
-  ```typescript
-  z.object({
-    targetModule: z.enum([
-      "streaming-chat",
-      "a11y-primitives",
-      "edge-runtime",
-      "invalid-target",
-    ]),
-    strictA11yCheck: z.boolean().default(true),
-  });
-
-  interface ArchitectureAuditResult {
-    moduleName: string;
-    score: number; // 0 - 100
-    wcagLevel: "Pass (AA)" | "Pass (AAA)" | "Flagged";
-    metrics: {
-      keyboardNav: string;
-      coldStartLatencyMs: number;
-      bundleFootprintKb: number;
-    };
-    findings: string[];
-    recommendation: string;
-  }
-  ```
+MIT (c) 2026 Talal Shah
