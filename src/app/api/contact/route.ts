@@ -1,16 +1,24 @@
 ﻿import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req: Request) {
   try {
+    const apiKey = process.env.RESEND_API_KEY || "re_dummy_key_for_ci_build";
+    const resend = new Resend(apiKey);
+
     const { name, email, message } = await req.json();
 
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: "Name, email, and message are required." },
         { status: 400 }
+      );
+    }
+
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json(
+        { error: "Email service unconfigured in test environment." },
+        { status: 500 }
       );
     }
 
