@@ -23,7 +23,7 @@ jobs:
       - name: Run Vitest Suite
         run: npm run test
 
-      - name: Install Playwright Browsers & OS Dependencies
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E Tests
